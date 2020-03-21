@@ -1,0 +1,42 @@
+HyperPara:
+  generatorAlpha: 10 #对抗损失和恒等/一致性损失的权重
+
+  G_initializer_kernel_type: 'VarianceScaling'
+  G_initializer_kernel_weight: 0.01
+
+  G_initializer_bias_type: 'constant'
+  G_initializer_bias_weight: 0
+  G_regulazition: True
+  G_regulazition_kernel_type: 'l2'
+  G_regulazition_kernel_weight: 0
+  G_regulazition_bias_type: 'l1'
+  G_regulazition_bias_weight: 0
+  G_activation: 'selu'
+  G_is_sn: True
+
+  D_initializer_kernel_type: 'VarianceScaling'
+  D_initializer_kernel_weight: 0.1
+  D_initializer_bias_type: 'constant'
+  D_initializer_bias_weight: 0
+  D_regulazition: True
+  D_regulazition_kernel_type: 'l2'
+  D_regulazition_kernel_weight: 0
+  D_regulazition_bias_type: 'l1'
+  D_regulazition_bias_weight: 0
+  D_activation: 'leaky_relu'
+  D_is_sn: True
+
+  itrator_DG: &itrator_DG 50
+  checkpoint_prefix: './checkpoints'
+  batch_size: &batch_size 4
+Dataset:
+  input_path: '/media/haiya/tr_data2/fivek/fivek_full/ShotZero'
+  label_path: '/media/haiya/tr_data2/fivek/fivek_full/C'
+  filelist: 'filelist.json'
+  repeat: -1
+  num_parallel_calls: 6
+  batch_size: *batch_size
+  buffer_size: *itrator_DG
+  shuffle: 12
+  is_pair: False
+
