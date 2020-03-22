@@ -2,29 +2,28 @@ HyperPara:
   generatorAlpha: 10 #对抗损失和恒等/一致性损失的权重
 
   G_initializer_kernel_type: 'VarianceScaling'
-  G_initializer_kernel_weight: 0.01
-
+  G_initializer_kernel_weight: 0.001
   G_initializer_bias_type: 'constant'
   G_initializer_bias_weight: 0
-  G_regulazition: True
   G_regulazition_kernel_type: 'l2'
   G_regulazition_kernel_weight: 0
   G_regulazition_bias_type: 'l1'
   G_regulazition_bias_weight: 0
   G_activation: 'selu'
-  G_is_sn: True
+  G_is_sn: False
+  G_clip_value: 100000
 
   D_initializer_kernel_type: 'VarianceScaling'
-  D_initializer_kernel_weight: 0.1
+  D_initializer_kernel_weight: 0.001
   D_initializer_bias_type: 'constant'
   D_initializer_bias_weight: 0
-  D_regulazition: True
   D_regulazition_kernel_type: 'l2'
   D_regulazition_kernel_weight: 0
   D_regulazition_bias_type: 'l1'
   D_regulazition_bias_weight: 0
   D_activation: 'leaky_relu'
   D_is_sn: True
+  D_clip_value: 100000
 
   itrator_DG: &itrator_DG 50
   checkpoint_prefix: './checkpoints'

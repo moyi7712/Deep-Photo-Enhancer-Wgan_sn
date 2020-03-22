@@ -8,6 +8,8 @@ class Network(object):
     def __init__(self, config, strategy=None):
         self.strategy = strategy
         self.Alpha = config.generatorAlpha
+        self.G_weight_clip_value = config.G_clip_value
+        self.D_weight_clip_value = config.D_clip_value
         self.batch_size = config.batch_size
         if strategy:
             self.global_batch_size = strategy.num_replicas_in_sync * self.batch_size
@@ -34,6 +36,7 @@ class Network(object):
     def average_loss(self, loss):
         # return tf.nn.compute_average_loss(loss, global_batch_size=self.global_batch_size)
         return loss
+
     def regularizer_loss(self, model):
         return tf.add_n(getattr(model, 'losses'))
 
@@ -71,6 +74,7 @@ class Network(object):
     def strategy2Tensor(self, loss):
         # return tf.reduce_mean(self.strategy.reduce(tf.distribute.ReduceOp.SUM, loss, axis=None))
         return tf.reduce_mean(loss)
+
     def train_step_discriminator(self, inputs, label):
         with tf.GradientTape(persistent=True) as tape_Discriminator:
             '''生成'''
@@ -84,11 +88,13 @@ class Network(object):
             '''loss'''
             loss_Discriminator_regularizer = self.get_regularizer_dis_loss()
             # loss_Discriminator = tf.losses.hinge(dis_input, dis_fake_input) + tf.losses.hinge(dis_label, dis_fake_label)
-            loss_Discriminator = -tf.reduce_mean(dis_input)+tf.reduce_mean(dis_fake_input)-tf.reduce_mean(dis_label)+tf.reduce_mean(dis_fake_label)
+            loss_Discriminator = -tf.reduce_mean(dis_input) + tf.reduce_mean(dis_fake_input) - tf.reduce_mean(
+                dis_label) + tf.reduce_mean(dis_fake_label)
             loss_Discriminator_total = self.average_loss(loss_Discriminator) + loss_Discriminator_regularizer
         discriminator_gradients = tape_Discriminator.gradient(loss_Discriminator_total,
                                                               self.Discriminator_train_variable)
-        discriminator_gradients = [tf.clip_by_value(grad, -1e-8, 1e-8) for grad in discriminator_gradients]
+        # discriminator_gradients = [tf.clip_by_value(grad, -self.D_weight_clip_value, self.D_weight_clip_value) for grad
+        #                            in discriminator_gradients]
 
         self.discriminator_optimizer.apply_gradients(zip(discriminator_gradients, self.Discriminator_train_variable))
         output_loss = [dis_input, dis_label, dis_fake_label, dis_fake_input, loss_Discriminator_regularizer,
@@ -108,22 +114,23 @@ class Network(object):
             '''loss'''
             loss_cycle = tf.losses.MSE(inputs, cycle_x) + tf.losses.MSE(label, cycle_y)
             loss_identity = tf.losses.MSE(inputs, fake_y) + tf.losses.MSE(label, fake_x)
-            loss_Generator = -tf.reduce_mean(dis_fake_label_gen) + tf.reduce_mean(dis_fake_input_gen)
-            loss_Generator += loss_cycle * (self.Alpha**2) + loss_identity * self.Alpha
+            loss_Generator = -tf.reduce_mean(dis_fake_label_gen) - tf.reduce_mean(dis_fake_input_gen)
+            loss_Generator += loss_cycle * (self.Alpha ** 2) + loss_identity * self.Alpha
             loss_Generator_regularizer = self.get_regularizer_gen_loss()
             loss_Generator_total = self.average_loss(loss_Generator) + loss_Generator_regularizer
         generator_gradients = tape_Generator.gradient(loss_Generator_total,
                                                       self.Generator_train_variable)
-        generator_gradients = [tf.clip_by_value(grad, -1e-8, 1e-8) for grad in generator_gradients]
+        # generator_gradients = [tf.clip_by_value(grad, -self.G_weight_clip_value, self.G_weight_clip_value) for grad in
+        #                        generator_gradients]
         self.generator_optimizer.apply_gradients(zip(generator_gradients, self.Generator_train_variable))
         output_loss = [dis_fake_label_gen, dis_fake_input_gen, loss_cycle, loss_identity, loss_Generator,
-                        loss_Generator_regularizer, loss_Generator_total]
+                       loss_Generator_regularizer, loss_Generator_total]
         return output_loss
 
     @tf.function
     def distributed_train_step(self, inputs, labels, is_Gen_Train):
         # loss = self.strategy.experimental_run_v2(self.train_step_discriminator, args=(inputs, labels))
-        loss = self.train_step_discriminator(inputs,labels)
+        loss = self.train_step_discriminator(inputs, labels)
         loss = [self.strategy2Tensor(lossTemp) for lossTemp in loss]
         loss_dict = {'dis_input': loss[0],
                      'dis_label': loss[1],

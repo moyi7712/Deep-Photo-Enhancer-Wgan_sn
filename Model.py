@@ -156,7 +156,8 @@ class Model(object):
             if n:
                 up_ = n(up_)
         # outputs = up_
-        outputs = tf.clip_by_value(up_ + inputs, 0, 1)
+        outputs = up_ + inputs
+        # outputs = tf.clip_by_value(up_ + inputs, 0, 1)
         return keras.Model(inputs=inputs, outputs=outputs)
 
     def DiscriminatorStack(self):
@@ -173,11 +174,9 @@ class Model(object):
             self.BN_D(name='downsample_norm_4'),
             self.Conv2D_D(128, 5, 2, padding='SYMMETRIC', name='downsample_conv_5'),
             self.BN_D(name='downsample_norm_5'),
-            self.Conv2D_D(1, 5, stride=1, padding='CONSTANT', name='downsample_conv_6'),
+            self.Conv2D_D(1, 3, 1, padding='SYMMETRIC', name='downsample_conv_6'),
             self.BN_D(name='downsample_norm_6'),
-            self.Conv2D_D(1, 16, stride=1, padding='valid', name='downsample_conv_7'),
-
-
+            self.Conv2D_D(1, 16, stride=1, padding='valid', name='last_layer', activate='None'),
 
         ]
         return Stack
@@ -190,5 +189,5 @@ class Model(object):
             outputs = l(outputs)
         # outputs = tf.nn.sigmoid(outputs)
         outputs = tf.reduce_mean(outputs, axis=[1, 2, 3])
-
+        # outputs = tf.nn.sigmoid(outputs)
         return keras.Model(inputs=inputs, outputs=outputs)
